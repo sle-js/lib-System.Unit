@@ -157,9 +157,10 @@ const testSummary = unitTest => {
                 passed: 0,
                 total: 0
             })(acc => t => accumulate(acc)(testSummaryHelper(t)))(tests))(name => assertion => ({
-            passed: assertion.isAllGood() ? 1 : 0,
-            total: 1
-        }));
+                passed: assertion.isAllGood() ? 1 : 0,
+                total: 1
+            })
+        );
 
     return testSummaryHelper(unitTest);
 };

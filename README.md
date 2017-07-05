@@ -8,7 +8,7 @@ sabotaging the other tests within the suite.
 Using an ADT style a collection of tests can be described as
  
 ```haskell
-type Test = Suite String * List Test | Unit String * Assertion 
+type UnitTest = Suite String * List UnitTest | Test String * Assertion 
 ```
  
 An ADT style `Assertion` with functions would then look like this:
@@ -47,7 +47,7 @@ that we're accustomed to seeing is nothing more than a view of this structure.  
 tests defined:
 
 ```haskell
-totalTests :: Test -> Int
+totalTests :: UnitTest -> Int
 totalTests test = case test of
     Unit name assertion -> 1
     Suite name tests -> tests.fold 0 (\acc \test -> acc + (totalTests test))    
@@ -56,9 +56,9 @@ totalTests test = case test of
 Similarly we can total up the number of tests that passed using
 
 ```haskell
-passedTests :: Test -> Int
+passedTests :: UnitTest -> Int
 passedTests test = case test of
-    Unit name assertion
+    Test name assertion
         | assertion.isAllGood() -> 1
         | else -> 0
     Suite name tests -> tests.fold 0 (\acc \test -> acc + (passedTests test))

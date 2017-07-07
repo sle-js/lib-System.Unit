@@ -64,3 +64,65 @@ passedTests test = case test of
     Suite name tests -> tests.fold 0 (\acc \test -> acc + (passedTests test))
 ```
 
+## Rethinking Assertion
+
+Looking at the above it is clear that `Assertion` can be expanded to offer more functionality.  However the interesting
+thing is that, looking at the functions that operate over `UnitTest`, all that is required is the function method
+
+```haskell
+Assertion a => isAllGood :: () -> Boolean 
+```
+
+Although not defined explicitly being able to use pattern matching over the `Assertion` type is way to extract the 
+`String` reason associated with a failed `Assertion`.  By adding the ability to extract a fail message off of an
+`Assertion` it is possible to express the `Assertion` as an interface rather than an ADT type.  Doing so we now end up
+with
+
+```haskell
+interface Assertion where
+    isAllGood :: () -> Boolean
+    failMessage :: () -> Maybe String
+```
+
+Replacing this with an interface it allows us not to create different implementations of `Assertion` depending on the 
+style that is important to the particular developer.  For example it is now possible to create a type which implements
+this interface but is the xUnit assertion style whilst another implementation might offer a BBD style of assertions.
+ 
+An issue though with this interface is that it is only able to accommodate synchronous assertions.  By rewriting this
+into a Promises style it is then possible for assertions to accommodate asynchronous assertions.  If I then rewrite
+the above interface to appear as follows:
+
+```haskell
+interface Assertion extends Promises String ()
+```
+
+A failed promise of String is then the failed assertion's message whilst a successful assertion is represented as a 
+promise of `()`.  The function for `totalTests` does not change and can still operation in a synchronous manner.  The 
+function for `passedTests` however changes to have the following signature:
+ 
+```haskell
+passedTests :: UnitTest -> Promise _ Int
+```
+
+The implementation of this function is relatively simple.
+
+```haskell
+passedTests :: UnitTest -> Promise _ Int
+passedTests test = 
+    allAssertions test = case test of
+        Test name assertion -> [assertion]
+        Suite name tests -> tests.fold [] (\acc \test -> acc ++ (passedTests test))
+
+    Promise.all ((allAssertions test).map (_.then(constant 1).catch(constant 0))).then(_.foldl 0 (+))
+```
+
+This style then as the following benefits:
+
+* It unifies synchronous and asynchronous unit tests
+* Idiomatic `sle` dictates that all side-effects are captured within a promise.  Using this style it is possible to deal
+  with side-effects in a consistent manner.  Example of side-effects are random numbers for generative tests, reading
+  and writing of files and other integrated actions like invoking services of integrating into persistent stores
+* This style still supports the ability to have multiple implementations accommodating different styles and tastes of
+  formulating assertions
+  
+  

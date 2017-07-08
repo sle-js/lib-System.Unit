@@ -87,7 +87,13 @@ assumptionEqual(AllGood.reduce(() => 0)(file => lineno => msg => 1), 0);
 assumptionEqual(Fail("thisFile")(10)("Ooops").reduce(() => "none")(file => lineno => msg => file + ":" + lineno + ":" + msg), "thisFile:10:Ooops");
 
 
-AssertionType.prototype.then = function(fThen) {
+const isAllGood = (assertion) =>
+    assertion.reduce(constant(true))(file => lineno => msg => false);
+assumption(isAllGood(AllGood));
+assumption(!isAllGood(Fail("thisFile")(20)("oops")));
+
+
+AssertionType.prototype.then = function (fThen) {
     if (this.isAllGood()) {
         return fThen();
     } else {
@@ -96,7 +102,7 @@ AssertionType.prototype.then = function(fThen) {
 };
 
 
-AssertionType.prototype.catch = function(fCatch) {
+AssertionType.prototype.catch = function (fCatch) {
     if (this.isAllGood()) {
         return this;
     } else {
@@ -109,13 +115,6 @@ AssertionType.prototype.catch = function(fCatch) {
 };
 
 
-AssertionType.prototype.isAllGood = function () {
-    return this.reduce(constant(true))(file => lineno => msg => false);
-};
-assumption(AllGood.isAllGood());
-assumption(!Fail("thisFile")(20)("oops").isAllGood());
-
-
 const messageWithDefault = def => assertion =>
     assertion.reduce(constant(def))(file => lineno => msg => msg);
 assumptionEqual(messageWithDefault("fine")(fail("oops")), "oops");
@@ -123,7 +122,7 @@ assumptionEqual(messageWithDefault("fine")(AllGood), "fine");
 
 
 AssertionType.prototype.isTrue = function (value) {
-    return this.isAllGood()
+    return isAllGood(this)
         ? value
             ? this
             : fail("isTrue failed")
@@ -135,7 +134,7 @@ assumptionEqual(messageWithDefault("none")(AllGood.isTrue(true).isTrue(false).is
 
 
 AssertionType.prototype.equals = function (a) {
-    return b => this.isAllGood()
+    return b => isAllGood(this)
         ? (a === b)
             ? this
             : fail("equals failed: " + a.toString() + " != " + b.toString())
@@ -156,7 +155,7 @@ const showErrors = unitTest => {
         unitTest.reduce(name => tests =>
             tests.forEach(test => showUnitTestErrors(Array.append(name)(path))(test))
         )(name => assumption => {
-            if (!assumption.isAllGood()) {
+            if (!isAllGood(assumption)) {
                 console.log(Array.join(": ")(Array.append(name)(path)) + ": " + assumption.show())
             }
         });
@@ -179,7 +178,7 @@ const testSummary = unitTest => {
                 passed: 0,
                 total: 0
             })(acc => t => accumulate(acc)(testSummaryHelper(t)))(tests))(name => assertion => ({
-                passed: assertion.isAllGood() ? 1 : 0,
+                passed: isAllGood(assertion) ? 1 : 0,
                 total: 1
             })
         );

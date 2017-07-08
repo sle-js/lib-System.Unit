@@ -26,8 +26,11 @@ const tests = Unit.Suite("Test Suite")([
 const totalTests = unitTest =>
     unitTest.reduce(name => tests => Array.foldl(0)(acc => t => acc + totalTests(t))(tests))(name => assertion => 1);
 
+const isAllGood = (assertion) =>
+    assertion.reduce(x => true)(file => lineno => msg => false);
+
 const passedTests = unitTest =>
-    unitTest.reduce(name => tests => Array.foldl(0)(acc => t => acc + passedTests(t))(tests))(name => assertion => assertion.isAllGood() ? 1 : 0);
+    unitTest.reduce(name => tests => Array.foldl(0)(acc => t => acc + passedTests(t))(tests))(name => assertion => isAllGood(assertion) ? 1 : 0);
 
 
 module.exports = Unit.Suite("Unit Test Test")([

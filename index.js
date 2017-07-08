@@ -94,7 +94,7 @@ assumption(!isAllGood(Fail("thisFile")(20)("oops")));
 
 
 AssertionType.prototype.then = function (fThen) {
-    if (this.isAllGood()) {
+    if (isAllGood(this)) {
         return fThen();
     } else {
         return this;
@@ -103,7 +103,7 @@ AssertionType.prototype.then = function (fThen) {
 
 
 AssertionType.prototype.catch = function (fCatch) {
-    if (this.isAllGood()) {
+    if (isAllGood(this)) {
         return this;
     } else {
         return fCatch({
@@ -166,44 +166,42 @@ const showErrors = unitTest => {
 };
 
 
+// testSummary :: UnitTest -> Promise _ { passed = Int, total = Int }
 const testSummary = unitTest => {
-    const accumulate = acc => item => ({
-        passed: acc.passed + item.passed,
-        total: acc.total + item.total
-    });
+    const unitTestAssertions = unitTest =>
+        unitTest.reduce(name => tests => Array.foldl([])(acc => item => Array.concat(unitTestAssertions(item))(acc))(tests))(name => assertions => [assertions]);
 
-    const testSummaryHelper = unitTest =>
-        unitTest.reduce(
-            name => tests => Array.foldl({
-                passed: 0,
-                total: 0
-            })(acc => t => accumulate(acc)(testSummaryHelper(t)))(tests))(name => assertion => ({
-                passed: isAllGood(assertion) ? 1 : 0,
-                total: 1
-            })
-        );
+    const allAssertions =
+        unitTestAssertions(unitTest);
 
-    return testSummaryHelper(unitTest);
+    const binaryAssertions =
+        Array.map(assertion => assertion
+            .then(_ => Promise.resolve(true))
+            .catch(_ => Promise.resolve(false)))(allAssertions);
+
+    return Promise.all(binaryAssertions)
+        .then(items => Promise.resolve({
+            passed: Array.length(Array.filter(i => i)(items)),
+            total: Array.length(items)
+        }))
 };
 
 
 const showSummary = unitTest => {
-    const results =
-        testSummary(unitTest);
-
-    console.log(`Passed ${results.passed} out of ${results.total}`);
+    testSummary(unitTest).then(summary => {
+        console.log(`Passed ${summary.passed} out of ${summary.total}`);
+    });
 
     return unitTest;
 };
 
 
 const setExitCodeOnFailures = unitTest => {
-    const results =
-        testSummary(unitTest);
-
-    if (results.passed !== results.total) {
-        process.exitCode = -1;
-    }
+    testSummary(unitTest).then(summary => {
+        if (summary.passed !== summary.total) {
+            process.exitCode = -1;
+        }
+    });
 
     return unitTest;
 };

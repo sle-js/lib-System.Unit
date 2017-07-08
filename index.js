@@ -1,5 +1,6 @@
 const Array = mrequire("core:Native.Data.Array:1.0.0");
 
+
 const constant = v => _ =>
     v;
 
@@ -145,22 +146,18 @@ assumptionEqual(messageWithDefault("none")(AllGood.equals(1)(2)), "equals failed
 assumptionEqual(messageWithDefault("none")(AllGood.equals(1)(2).equals(3)(4)), "equals failed: 1 != 2");
 
 
-AssertionType.prototype.show = function () {
-    return this.reduce(constant("All good"))(file => lineno => msg => file + ": " + lineno + ": " + msg);
-};
-
-
 const showErrors = unitTest => {
-    const showUnitTestErrors = path => unitTest =>
+    const unitTestErrors = path => unitTest =>
         unitTest.reduce(name => tests =>
-            tests.forEach(test => showUnitTestErrors(Array.append(name)(path))(test))
-        )(name => assumption => {
-            if (!isAllGood(assumption)) {
-                console.log(Array.join(": ")(Array.append(name)(path)) + ": " + assumption.show())
-            }
-        });
+            Array.foldl([])(acc => item => Array.concat(acc)(unitTestErrors(Array.append(name)(path))(item)))(tests)
+        )(name => assumption =>
+            assumption
+                .then(i => Promise.resolve(""))
+                .catch(i => Promise.resolve(Array.join(": ")(Array.append(name)(path)) + ": " + i.fileName + ": " + i.lineNumber + ": " + i.message)));
 
-    showUnitTestErrors([])(unitTest);
+    Promise.all(unitTestErrors([])(unitTest))
+        .then(items => Array.filter(item => item.length > 0)(items))
+        .then(items => items.forEach(i => console.log(i)));
 
     return unitTest;
 };
@@ -169,7 +166,8 @@ const showErrors = unitTest => {
 // testSummary :: UnitTest -> Promise _ { passed = Int, total = Int }
 const testSummary = unitTest => {
     const unitTestAssertions = unitTest =>
-        unitTest.reduce(name => tests => Array.foldl([])(acc => item => Array.concat(unitTestAssertions(item))(acc))(tests))(name => assertions => [assertions]);
+        unitTest.reduce(name => tests =>
+            Array.foldl([])(acc => item => Array.concat(unitTestAssertions(item))(acc))(tests))(name => assertions => [assertions]);
 
     const allAssertions =
         unitTestAssertions(unitTest);

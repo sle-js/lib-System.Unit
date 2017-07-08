@@ -66,8 +66,9 @@ passedTests test = case test of
 
 ## Rethinking Assertion
 
-Looking at the above it is clear that `Assertion` can be expanded to offer more functionality.  However the interesting
-thing is that, looking at the functions that operate over `UnitTest`, all that is required is the function method
+Looking at the above it is clear that `Assertion` can be expanded to offer more functionality.  However taking a 
+perspective from `UnitTest` and the functions that operate over an instance of `UnitTest`, all that is required is the 
+function method
 
 ```haskell
 Assertion a => isAllGood :: () -> Boolean 
@@ -84,9 +85,9 @@ interface Assertion where
     failMessage :: () -> Maybe String
 ```
 
-Replacing this with an interface it allows us not to create different implementations of `Assertion` depending on the 
-style that is important to the particular developer.  For example it is now possible to create a type which implements
-this interface but is the xUnit assertion style whilst another implementation might offer a BBD style of assertions.
+Replacing this with an interface it allows us to create different implementations of `Assertion` depending on the  style 
+that is important to the particular developer.  For example it is now possible to create a type which implements this 
+interface but is the xUnit assertion style whilst another implementation might offer a BBD style of assertions.
  
 An issue though with this interface is that it is only able to accommodate synchronous assertions.  By rewriting this
 into a Promises style it is then possible for assertions to accommodate asynchronous assertions.  If I then rewrite
@@ -116,7 +117,7 @@ passedTests test =
     Promise.all ((allAssertions test).map (_.then(constant 1).catch(constant 0))).then(_.foldl 0 (+))
 ```
 
-This style then as the following benefits:
+This style then has the following benefits:
 
 * It unifies synchronous and asynchronous unit tests
 * Idiomatic `sle` dictates that all side-effects are captured within a promise.  Using this style it is possible to deal

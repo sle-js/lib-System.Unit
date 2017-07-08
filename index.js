@@ -87,6 +87,28 @@ assumptionEqual(AllGood.reduce(() => 0)(file => lineno => msg => 1), 0);
 assumptionEqual(Fail("thisFile")(10)("Ooops").reduce(() => "none")(file => lineno => msg => file + ":" + lineno + ":" + msg), "thisFile:10:Ooops");
 
 
+AssertionType.prototype.then = function(fThen) {
+    if (this.isAllGood()) {
+        return fThen();
+    } else {
+        return this;
+    }
+};
+
+
+AssertionType.prototype.catch = function(fCatch) {
+    if (this.isAllGood()) {
+        return this;
+    } else {
+        return fCatch({
+            fileName: this.content[1],
+            lineNumber: this.content[2],
+            message: this.content[3]
+        })
+    }
+};
+
+
 AssertionType.prototype.isAllGood = function () {
     return this.reduce(constant(true))(file => lineno => msg => false);
 };

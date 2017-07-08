@@ -147,15 +147,15 @@ assumptionEqual(messageWithDefault("none")(AllGood.equals(1)(2).equals(3)(4)), "
 
 
 const showErrors = unitTest => {
-    const unitTestErrors = path => unitTest =>
+    const unitTestMessages = path => unitTest =>
         unitTest.reduce(name => tests =>
-            Array.foldl([])(acc => item => Array.concat(acc)(unitTestErrors(Array.append(name)(path))(item)))(tests)
+            Array.foldl([])(acc => item => Array.concat(acc)(unitTestMessages(Array.append(name)(path))(item)))(tests)
         )(name => assumption =>
             assumption
                 .then(i => Promise.resolve(""))
                 .catch(i => Promise.resolve(Array.join(": ")(Array.append(name)(path)) + ": " + i.fileName + ": " + i.lineNumber + ": " + i.message)));
 
-    Promise.all(unitTestErrors([])(unitTest))
+    Promise.all(unitTestMessages([])(unitTest))
         .then(items => Array.filter(item => item.length > 0)(items))
         .then(items => items.forEach(i => console.log(i)));
 

@@ -51,105 +51,60 @@ function myStackTrace() {
 }
 
 
+const rejectPromise = message => {
+    const stack = myStackTrace();
+    const call = stack[2];
+    return Promise.reject({
+        fileName: call.getFileName(),
+        lineNumber: call.getLineNumber(),
+        message: message
+    });
+};
+
+
 function AssertionType(content) {
     this.content = content;
 }
 
 
 const AllGood =
-    new AssertionType([0]);
+    new AssertionType(Promise.resolve(true));
 
 
-const Fail = file => lineno => message =>
-    new AssertionType([1, file, lineno, message]);
-
-
-const fail = message => {
-    const stack = myStackTrace();
-    const call = stack[1];
-    const file = call.getFileName();
-    const lineno = call.getLineNumber();
-
-    return Fail(file)(lineno)(message);
-};
-
-
-AssertionType.prototype.reduce = function (fAllGood) {
-    return fFail => {
-        switch (this.content[0]) {
-            case 0:
-                return fAllGood();
-            default:
-                return fFail(this.content[1])(this.content[2])(this.content[3]);
-        }
-    }
-};
-assumptionEqual(AllGood.reduce(() => 0)(file => lineno => msg => 1), 0);
-assumptionEqual(Fail("thisFile")(10)("Ooops").reduce(() => "none")(file => lineno => msg => file + ":" + lineno + ":" + msg), "thisFile:10:Ooops");
-
-
-const isAllGood = (assertion) =>
-    assertion.reduce(constant(true))(file => lineno => msg => false);
-assumption(isAllGood(AllGood));
-assumption(!isAllGood(Fail("thisFile")(20)("oops")));
+const Fail = message =>
+    new AssertionType(rejectPromise(message));
 
 
 AssertionType.prototype.then = function (fThen, fCatch) {
-    if (isAllGood(this)) {
-        return fThen();
-    } if (fCatch) {
-        return fCatch({
-            fileName: this.content[1],
-            lineNumber: this.content[2],
-            message: this.content[3]
-        });
-    } else {
-        return this;
-    }
+    return this.content.then(fThen, fCatch);
 };
 
 
 AssertionType.prototype.catch = function (fCatch) {
-    if (isAllGood(this)) {
+    return this.content.catch(fCatch);
+};
+
+
+AssertionType.prototype.isTrue = function (value) {
+    if (value) {
         return this;
     } else {
-        return fCatch({
-            fileName: this.content[1],
-            lineNumber: this.content[2],
-            message: this.content[3]
-        });
+        const rejection = rejectPromise("isTrue failed");
+        return new AssertionType(this.content.then(_ => rejection));
     }
 };
 
 
-const messageWithDefault = def => assertion =>
-    assertion.reduce(constant(def))(file => lineno => msg => msg);
-assumptionEqual(messageWithDefault("fine")(fail("oops")), "oops");
-assumptionEqual(messageWithDefault("fine")(AllGood), "fine");
-
-
-AssertionType.prototype.isTrue = function (value) {
-    return isAllGood(this)
-        ? value
-            ? this
-            : fail("isTrue failed")
-        : this;
-};
-assumptionEqual(AllGood.isTrue(true), AllGood);
-assumptionEqual(messageWithDefault("none")(AllGood.isTrue(false)), "isTrue failed");
-assumptionEqual(messageWithDefault("none")(AllGood.isTrue(true).isTrue(false).isTrue(true)), "isTrue failed");
-
-
 AssertionType.prototype.equals = function (a) {
-    return b => isAllGood(this)
-        ? (a === b)
-            ? this
-            : fail("equals failed: " + a.toString() + " != " + b.toString())
-        : this;
+    return b => {
+        if (a === b) {
+            return this;
+        } else {
+            const rejection = rejectPromise("equals failed: " + a.toString() + " != " + b.toString());
+            return new AssertionType(this.content.then(_ => rejection));
+        }
+    }
 };
-assumptionEqual(AllGood.equals(1)(1), AllGood);
-assumptionEqual(messageWithDefault("none")(AllGood.equals(1)(2)), "equals failed: 1 != 2");
-assumptionEqual(messageWithDefault("none")(AllGood.equals(1)(2).equals(3)(4)), "equals failed: 1 != 2");
 
 
 const showErrors = unitTest => {
@@ -220,5 +175,5 @@ module.exports = {
 
     AllGood,
     Fail,
-    fail
+    fail: Fail
 };

@@ -7,7 +7,7 @@ const tests = Unit.Suite("Test Suite")([
     Unit.Test("Passing Test")(
         Unit.AllGood.isTrue(true)),
     Unit.Test("Failing Test")(
-        Unit.fail("Houston we have a problem")),
+        Unit.Fail("Houston we have a problem")),
     Unit.Suite("Nested Test Suite")([
         Unit.Test("Nested Passing Test")(
             Unit.AllGood

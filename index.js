@@ -174,6 +174,5 @@ module.exports = {
     setExitCodeOnFailures,
 
     AllGood,
-    Fail,
-    fail: Fail
+    Fail
 };

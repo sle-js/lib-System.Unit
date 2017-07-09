@@ -1,21 +1,22 @@
 const Array = mrequire("core:Native.Data.Array:1.0.0");
+const Assertion = mrequire("core:Test.Unit.Assertion:1.0.0");
 
 const Unit = require("../index");
 
 
 const tests = Unit.Suite("Test Suite")([
     Unit.Test("Passing Test")(
-        Unit.AllGood.isTrue(true)),
+        Assertion.isTrue(true)),
     Unit.Test("Failing Test")(
-        Unit.Fail("Houston we have a problem")),
+        Assertion.isTrue(false)),
     Unit.Suite("Nested Test Suite")([
         Unit.Test("Nested Passing Test")(
-            Unit.AllGood
+            Assertion
                 .equals(10)(10)
                 .isTrue(11 === 11)
         ),
         Unit.Test("Nested Failing Test")(
-            Unit.AllGood
+            Assertion
                 .equals(10)(11)
                 .isTrue(22 === 22)
         )
@@ -39,6 +40,6 @@ const passedTests = unitTest => {
 
 
 module.exports = Unit.Suite("Unit Test Test")([
-    Unit.Test("Total tests is 4")(Unit.AllGood.equals(4)(totalTests(tests))),
-    Unit.Test("Passed tests is 2")(passedTests(tests).then(count => Unit.AllGood.equals(2)(count)))
+    Unit.Test("Total tests is 4")(Assertion.equals(4)(totalTests(tests))),
+    Unit.Test("Passed tests is 2")(passedTests(tests).then(count => Assertion.equals(2)(count)))
 ]);

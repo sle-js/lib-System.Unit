@@ -94,9 +94,15 @@ assumption(isAllGood(AllGood));
 assumption(!isAllGood(Fail("thisFile")(20)("oops")));
 
 
-AssertionType.prototype.then = function (fThen) {
+AssertionType.prototype.then = function (fThen, fCatch) {
     if (isAllGood(this)) {
         return fThen();
+    } if (fCatch) {
+        return fCatch({
+            fileName: this.content[1],
+            lineNumber: this.content[2],
+            message: this.content[3]
+        });
     } else {
         return this;
     }
@@ -111,7 +117,7 @@ AssertionType.prototype.catch = function (fCatch) {
             fileName: this.content[1],
             lineNumber: this.content[2],
             message: this.content[3]
-        })
+        });
     }
 };
 

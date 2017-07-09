@@ -1,10 +1,6 @@
 const Array = mrequire("core:Native.Data.Array:1.0.0");
 
 
-const constant = v => _ =>
-    v;
-
-
 function UnitTestType(content) {
     this.content = content;
 }

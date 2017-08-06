@@ -50,6 +50,23 @@ const showErrors = unitTest => {
 };
 
 
+const showDetail = unitTest => {
+    const unitTestMessages = path => unitTest =>
+        unitTest.reduce(name => tests =>
+            Array.foldl([])(acc => item => Array.concat(acc)(unitTestMessages(Array.append(name)(path))(item)))(tests)
+        )(name => assumption =>
+            assumption
+                .then(i => Promise.resolve("  " + Array.join(": ")(Array.append(name)(path))))
+                .catch(i => Promise.resolve("Failed: " + Array.join(": ")(Array.append(name)(path)) + ": " + i.fileName + ": " + i.lineNumber + ": " + i.message)));
+
+    Promise.all(unitTestMessages([])(unitTest))
+        .then(items => Array.filter(item => item.length > 0)(items))
+        .then(items => items.forEach(i => console.log(i)));
+
+    return unitTest;
+};
+
+
 // testSummary :: UnitTest -> Promise _ { passed = Int, total = Int }
 const testSummary = unitTest => {
     const unitTestAssertions = unitTest =>
@@ -95,6 +112,7 @@ const setExitCodeOnFailures = unitTest => {
 module.exports = {
     Suite,
     Test,
+    showDetail,
     showErrors,
     showSummary,
     setExitCodeOnFailures

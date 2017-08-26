@@ -1,20 +1,20 @@
 const Array = mrequire("core:Native.Data.Array:1.0.0");
 
 
-function UnitTestType(content) {
+function UnitTest$(content) {
     this.content = content;
 }
 
 
 const Suite = name => tests =>
-    new UnitTestType([0, name, tests]);
+    new UnitTest$([0, name, tests]);
 
 
 const Test = name => assertion =>
-    new UnitTestType([1, name, assertion]);
+    new UnitTest$([1, name, assertion]);
 
 
-UnitTestType.prototype.reduce = function (fSuite) {
+UnitTest$.prototype.reduce = function (fSuite) {
     return fUnit => {
         switch (this.content[0]) {
             case 0:
@@ -28,7 +28,7 @@ assumptionEqual(Suite("hello")(10).reduce(name => tests => name + tests)(name =>
 assumptionEqual(Test("hello")(10).reduce(name => assertion => "none")(name => tests => name + tests), "hello10");
 
 
-UnitTestType.prototype.then = function (f) {
+UnitTest$.prototype.then = function (f) {
     return f(this);
 };
 

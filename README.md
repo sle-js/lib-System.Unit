@@ -1,6 +1,6 @@
 This package is is an xUnit inspired unit testing framework.
 
-Given that `SLE`'s idiomatic style is functional it is possible to create a unit testing framework which is 
+Given that `sle`'s idiomatic style is functional it is possible to create a unit testing framework which is 
 significantly simpler than side-effect unit testing frameworks.  The reason for this is that, without code being able to 
 throw any exceptions or impose any side-effects, it is possible to calculate the result of a unit test without that test 
 sabotaging the other tests within the suite.
@@ -8,13 +8,13 @@ sabotaging the other tests within the suite.
 Using an ADT style a collection of tests can be described as
  
 ```haskell
-type UnitTest = Suite String * List UnitTest | Test String * Assertion 
+data UnitTest = Suite String * List UnitTest | Test String * Assertion 
 ```
  
 An ADT style `Assertion` with functions would then look like this:
 
 ```haskell
-type Assertion = AllGood | Fail String where
+data Assertion = AllGood | Fail String where
     isTrue :: Boolean -> Assertion
     isTrue b = case self of
         AllGood 
@@ -80,7 +80,7 @@ Although not defined explicitly being able to use pattern matching over the `Ass
 with
 
 ```haskell
-interface Assertion where
+type Assertion where
     isAllGood :: () -> Boolean
     failMessage :: () -> Maybe String
 ```
@@ -94,7 +94,7 @@ into a Promises style it is then possible for assertions to accommodate asynchro
 the above interface to appear as follows:
 
 ```haskell
-interface Assertion extends Promises String ()
+type Assertion = Promises String ()
 ```
 
 A failed promise of String is then the failed assertion's message whilst a successful assertion is represented as a 
@@ -127,3 +127,71 @@ This style then has the following benefits:
   formulating assertions
   
   
+## Rethinking Unit Test
+
+The style of a unit test being nothing more than an ADT is useful however it has the following shortcoming: I am unable 
+to create a collection of unit tests off of a promises centered file system.  So rather than my assertions being a 
+`Promise` I make each suite be a `Promise`.  In this way a unit test is now a simple ADT with simple assertions.
+
+So now we have the ADT being described as
+
+```haskell
+data UnitTest = Suite String * List (Promise _ UnitTest) | Test String * Assertion
+``` 
+
+With my assertion taking the form of
+
+```haskell
+data Assertion = AllGood | Fail String where
+    isTrue :: Boolean -> Assertion
+    isTrue b = case self of
+        AllGood 
+            | b -> AllGood
+            | not b -> Fail "isTrue failed"
+        else -> self
+        
+    equals :: t -> t -> Assertion
+    equals a b = case self of
+        AllGood 
+            | a == b -> AllGood
+            | a != b -> Fail ("equals failed: " ++ a.show() ++ " != " ++ b.show())
+        else -> self
+    
+    isAllGood :: () -> Boolean
+    isAllGood = case self of
+        AllGood -> true
+        else -> false
+```
+
+A collection of tests is now of the type `Promise _ UnitTest` and all operations are now rewritten against a promises
+style unit test rather than a promises style assertion.  The assertions signature returns to
+
+```haskell
+type Assertion where
+    isAllGood :: () -> Boolean
+    failMessage :: () -> Maybe String
+```
+
+Similarly the function `totalTests` now changes to
+
+```haskell
+totalTests :: Promise _ UnitTest -> Promise _ Int
+totalTests testPromise = 
+    testPromise.then (\test -> 
+        case test of
+            Unit name assertion -> 1
+            Suite name tests -> Promise.all(tests.map totalTesys).fold 0 (\acc \test -> acc + test))    
+
+```
+
+Finally `passedTests` has a similar shape to `totalTests`
+
+```haskell
+passedTests :: Promise _ UnitTest -> Promise _ Int
+passedTests testPromise = 
+    testPromise.then (\test ->
+        case test of
+            Unit name assertion -> if assertion.isAllGood() then 1 else 0
+            Suite name tests -> Promise.all(test.map passedTests).fold 0 (\acc \test -> acc + test))
+```
+

@@ -6,12 +6,14 @@ function UnitTest$(content) {
 }
 
 
+// Suite :: name -> List (Promise _ UnitTest) -> Promise _ UnitTest
 const Suite = name => tests =>
-    new UnitTest$([0, name, tests]);
+    Promise.resolve(new UnitTest$([0, name, tests]));
 
 
+// Test :: name -> Assertion -> Promise _ UnitTest
 const Test = name => assertion =>
-    new UnitTest$([1, name, assertion]);
+    Promise.resolve(new UnitTest$([1, name, assertion]));
 
 
 UnitTest$.prototype.reduce = function (fSuite) {
@@ -24,25 +26,21 @@ UnitTest$.prototype.reduce = function (fSuite) {
         }
     }
 };
-assumptionEqual(Suite("hello")(10).reduce(name => tests => name + tests)(name => assertion => "none"), "hello10");
-assumptionEqual(Test("hello")(10).reduce(name => assertion => "none")(name => tests => name + tests), "hello10");
-
-
-UnitTest$.prototype.then = function (f) {
-    return f(this);
-};
 
 
 const showErrors = unitTest => {
     const unitTestMessages = path => unitTest =>
-        unitTest.reduce(name => tests =>
-            Array.foldl([])(acc => item => Array.concat(acc)(unitTestMessages(Array.append(name)(path))(item)))(tests)
-        )(name => assumption =>
-            assumption
-                .then(i => Promise.resolve(""))
-                .catch(i => Promise.resolve(Array.join(": ")(Array.append(name)(path)) + ": " + i.fileName + ": " + i.lineNumber + ": " + i.message)));
+        unitTest.then(test =>
+            test.reduce(
+                name => tests =>
+                    Promise.all(tests.map(unitTestMessages(Array.append(name)(path)))).then(Array.foldl([])(Array.concat)))(
+                name => assertion =>
+                    assertion.failContent().reduce(
+                        () => "")(
+                        i => "Failed: " + Array.join(": ")(Array.append(name)(path)) + ": " + i.fileName + ": " + i.lineNumber + ": " + i.message))
+        );
 
-    Promise.all(unitTestMessages([])(unitTest))
+    unitTestMessages([])(Promise.resolve(unitTest))
         .then(items => Array.filter(item => item.length > 0)(items))
         .then(items => items.forEach(i => console.log(i)));
 
@@ -52,40 +50,46 @@ const showErrors = unitTest => {
 
 const showDetail = unitTest => {
     const unitTestMessages = path => unitTest =>
-        unitTest.reduce(name => tests =>
-            Array.foldl([])(acc => item => Array.concat(acc)(unitTestMessages(Array.append(name)(path))(item)))(tests)
-        )(name => assumption =>
-            assumption
-                .then(i => Promise.resolve("  " + Array.join(": ")(Array.append(name)(path))))
-                .catch(i => Promise.resolve("Failed: " + Array.join(": ")(Array.append(name)(path)) + ": " + i.fileName + ": " + i.lineNumber + ": " + i.message)));
+        unitTest.then(test =>
+            test.reduce(
+                name => tests =>
+                    Promise.all(tests.map(unitTestMessages(Array.append(name)(path)))).then(Array.foldl([])(Array.concat)))(
+                name => assertion =>
+                    assertion.failContent().reduce(
+                        () => "  " + Array.join(": ")(Array.append(name)(path)))(
+                        i => "Failed: " + Array.join(": ")(Array.append(name)(path)) + ": " + i.fileName + ": " + i.lineNumber + ": " + i.message))
+        );
 
-    Promise.all(unitTestMessages([])(unitTest))
-        .then(items => Array.filter(item => item.length > 0)(items))
+    unitTestMessages([])(Promise.resolve(unitTest))
         .then(items => items.forEach(i => console.log(i)));
 
     return unitTest;
 };
 
 
-// testSummary :: UnitTest -> Promise _ { passed = Int, total = Int }
 const testSummary = unitTest => {
-    const unitTestAssertions = unitTest =>
-        unitTest.reduce(name => tests =>
-            Array.foldl([])(acc => item => Array.concat(unitTestAssertions(item))(acc))(tests))(name => assertions => [assertions]);
+    const from = total => passed =>
+        [total, passed];
 
-    const allAssertions =
-        unitTestAssertions(unitTest);
+    const zero =
+        [0, 0];
 
-    const binaryAssertions =
-        Array.map(assertion => assertion
-            .then(_ => Promise.resolve(true))
-            .catch(_ => Promise.resolve(false)))(allAssertions);
+    const add = a => b =>
+        [a[0] + b[0], a[1] + b[1]];
 
-    return Promise.all(binaryAssertions)
-        .then(items => Promise.resolve({
-            passed: Array.length(Array.filter(i => i)(items)),
-            total: Array.length(items)
-        }))
+    const accumumulateTestSummary = unitTest =>
+        unitTest.then(test =>
+            test.reduce(
+                name => tests =>
+                    Promise.all(tests.map(accumumulateTestSummary)).then(Array.foldl(zero)(add)))(
+                name => assertion =>
+                    from(1)(assertion.isAllGood() ? 1 : 0))
+        );
+
+    return accumumulateTestSummary(Promise.resolve(unitTest)).then(answer => ({
+        passed: answer[1],
+        total: answer[0]
+    }));
 };
 
 

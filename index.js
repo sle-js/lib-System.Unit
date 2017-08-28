@@ -28,89 +28,65 @@ UnitTest$.prototype.reduce = function (fSuite) {
 };
 
 
-const showErrors = unitTest => {
-    const unitTestMessages = path => unitTest =>
+UnitTest$.prototype.flatten = function () {
+    const flattenUnitTest = path => unitTest =>
         unitTest.then(test =>
             test.reduce(
                 name => tests =>
-                    Promise.all(tests.map(unitTestMessages(Array.append(name)(path)))).then(Array.foldl([])(Array.concat)))(
+                    Promise.all(tests.map(flattenUnitTest(Array.append(name)(path)))).then(Array.foldl([])(Array.concat)))(
                 name => assertion =>
-                    assertion.failContent().reduce(
-                        () => "")(
-                        i => "Failed: " + Array.join(": ")(Array.append(name)(path)) + ": " + i.fileName + ": " + i.lineNumber + ": " + i.message))
+                    ({name: Array.append(name)(path), assertion: assertion}))
         );
 
-    unitTestMessages([])(Promise.resolve(unitTest))
-        .then(items => Array.filter(item => item.length > 0)(items))
-        .then(items => items.forEach(i => console.log(i)));
-
-    return unitTest;
+    return flattenUnitTest([])(Promise.resolve(this));
 };
 
 
-const showDetail = unitTest => {
-    const unitTestMessages = path => unitTest =>
-        unitTest.then(test =>
-            test.reduce(
-                name => tests =>
-                    Promise.all(tests.map(unitTestMessages(Array.append(name)(path)))).then(Array.foldl([])(Array.concat)))(
-                name => assertion =>
-                    assertion.failContent().reduce(
-                        () => "  " + Array.join(": ")(Array.append(name)(path)))(
-                        i => "Failed: " + Array.join(": ")(Array.append(name)(path)) + ": " + i.fileName + ": " + i.lineNumber + ": " + i.message))
-        );
-
-    unitTestMessages([])(Promise.resolve(unitTest))
-        .then(items => items.forEach(i => console.log(i)));
-
-    return unitTest;
-};
+const showTest = item =>
+    console.log(item.assertion.failContent().reduce(
+        () => "  " + Array.join(": ")(item.name))(
+        i => "Failed: " + Array.join(": ")(item.name) + ": " + i.fileName + ": " + i.lineNumber + ": " + i.message));
 
 
-const testSummary = unitTest => {
-    const from = total => passed =>
-        [total, passed];
-
-    const zero =
-        [0, 0];
-
-    const add = a => b =>
-        [a[0] + b[0], a[1] + b[1]];
-
-    const accumumulateTestSummary = unitTest =>
-        unitTest.then(test =>
-            test.reduce(
-                name => tests =>
-                    Promise.all(tests.map(accumumulateTestSummary)).then(Array.foldl(zero)(add)))(
-                name => assertion =>
-                    from(1)(assertion.isAllGood() ? 1 : 0))
-        );
-
-    return accumumulateTestSummary(Promise.resolve(unitTest)).then(answer => ({
-        passed: answer[1],
-        total: answer[0]
-    }));
-};
+const showErrors = unitTest =>
+    unitTest
+        .flatten()
+        .then(Array.filter(item => !item.assertion.isAllGood()))
+        .then(items => items.forEach(showTest))
+        .then(_ => unitTest);
 
 
-const showSummary = unitTest => {
-    testSummary(unitTest).then(summary => {
-        console.log(`Passed ${summary.passed} out of ${summary.total}`);
-    });
-
-    return unitTest;
-};
+const showDetail = unitTest =>
+    unitTest
+        .flatten()
+        .then(items => items.forEach(showTest))
+        .then(_ => unitTest);
 
 
-const setExitCodeOnFailures = unitTest => {
-    testSummary(unitTest).then(summary => {
-        if (summary.passed !== summary.total) {
-            process.exitCode = -1;
-        }
-    });
+const countOfPassedTests = items =>
+    Array.length(Array.filter(item => item.assertion.isAllGood())(items));
 
-    return unitTest;
-};
+
+const countOfTests = items =>
+    Array.length(items);
+
+
+const showSummary = unitTest =>
+    unitTest
+        .flatten()
+        .then(items => console.log(`Passed ${countOfPassedTests(items)} out of ${countOfTests(items)}`))
+        .then(_ => unitTest);
+
+
+const setExitCodeOnFailures = unitTest =>
+    unitTest
+        .flatten()
+        .then(items => {
+            if (countOfPassedTests(items) !== countOfTests(items)) {
+                process.exitCode = -1;
+            }
+        })
+        .then(_ => unitTest);
 
 
 module.exports = {
